@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+alembic
+psycopg2-binary
+geoalchemy2
+pgvector
+pydantic-settings
+openai
+langgraph
+langchain-core
+python-dotenv
+pandas
