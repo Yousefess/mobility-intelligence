@@ -83,16 +83,22 @@ def ingest_user(db, geolife_id: str) -> None:
             db.add(trajectory)
             db.flush()  # get trajectory.id
 
-            for seq, p in enumerate(pts):
-                db.add(
-                    TrajectoryPoint(
-                        trajectory_id=trajectory.id,
-                        seq=seq,
-                        timestamp=p.timestamp,
-                        altitude_m=p.altitude_m,
-                        geom=point_to_point_geom(p),
-                    )
+            POINT_CHUNK_SIZE = 200
+            point_objs = [
+                TrajectoryPoint(
+                    trajectory_id=trajectory.id,
+                    seq=seq,
+                    timestamp=p.timestamp,
+                    altitude_m=p.altitude_m,
+                    geom=point_to_point_geom(p),
                 )
+                for seq, p in enumerate(pts)
+            ]
+            for i in range(0, len(point_objs), POINT_CHUNK_SIZE):
+                chunk = point_objs[i : i + POINT_CHUNK_SIZE]
+                db.add_all(chunk)
+                db.flush()  # push this chunk now, instead of one giant statement at the end
+
             trajectory_count += 1
 
     db.commit()
