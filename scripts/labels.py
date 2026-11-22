@@ -36,14 +36,36 @@ def parse_labels_file(path: str) -> list[LabelInterval]:
     return intervals
 
 
+MIN_OVERLAP_RATIO = 0.5
+
+
 def match_mode(
     start: datetime, end: datetime, intervals: list[LabelInterval]
 ) -> str | None:
-    """Return the mode of the label interval that this trajectory's time
-    range falls inside (or overlaps most with). Returns None if no label
-    file exists for this user, or no interval covers this time range.
+    """Return the mode of the label interval that overlaps most with this
+    trajectory's time range, as long as that overlap covers at least
+    MIN_OVERLAP_RATIO of the trajectory's own duration.
+
+    This replaces strict containment (trajectory fully inside one labeled
+    interval), which left most trajectories unlabeled because segmentation
+    boundaries (file splits, gap threshold) rarely line up exactly with
+    GeoLife's label interval boundaries.
     """
+    traj_duration = (end - start).total_seconds()
+    if traj_duration <= 0:
+        return None
+
+    best_mode: str | None = None
+    best_overlap = 0.0
+
     for interval in intervals:
-        if start >= interval.start_time and end <= interval.end_time:
-            return interval.mode
+        overlap_start = max(start, interval.start_time)
+        overlap_end = min(end, interval.end_time)
+        overlap = (overlap_end - overlap_start).total_seconds()
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best_mode = interval.mode
+
+    if best_overlap / traj_duration >= MIN_OVERLAP_RATIO:
+        return best_mode
     return None
